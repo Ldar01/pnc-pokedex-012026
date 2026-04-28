@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: pokedex-capas-012026
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pokedex
+    password: root
+    username: postgres
+    driver-class-name: org.postgresql.Driver
+
