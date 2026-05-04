@@ -1,7 +1,6 @@
 package com.uca.pokedexcapas012026.controller;
 import com.uca.pokedexcapas012026.entities.Pokemon;
 import com.uca.pokedexcapas012026.service.PokedexService;
-import jakarta.websocket.server.PathParam;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +23,7 @@ public class PokedexController {
     }
 
     @GetMapping("/{id}")
-    public Pokemon getPokemonById(@PathParam("id") int id) {
+    public Pokemon getPokemonById(@PathVariable int id) {
         return pokedexService.findPokemonById(id);
     }
 
