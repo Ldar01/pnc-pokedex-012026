@@ -17,9 +17,9 @@ public class PokedexController {
 
     }
 
-    @GetMapping("/id")
-    public Pokemon testPokemon(@PathParam("id") int id) {
-        return pokedexService.findPokemonById(1);
+    @GetMapping("/{id}")
+    public Pokemon testPokemon(@PathVariable @PathParam("id") Integer id) {
+        return pokedexService.findPokemonById(id);
     }
 
     @PostMapping("")
