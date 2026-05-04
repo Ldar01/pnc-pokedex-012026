@@ -8,5 +8,6 @@ import java.util.List;
 
 @Repository
 public interface PokedexRepository extends JpaRepository<Pokemon, Integer> {
+
     List<Pokemon> findByType(String type);
 }
