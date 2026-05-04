@@ -18,7 +18,7 @@ public class PokedexController {
     }
 
     @GetMapping("/{id}")
-    public Pokemon testPokemon(@PathVariable @PathParam("id") Integer id) {
+    public Pokemon getPokemon(@PathVariable Integer id) {
         return pokedexService.findPokemonById(id);
     }
 
