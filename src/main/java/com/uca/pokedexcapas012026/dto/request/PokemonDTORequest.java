@@ -1,7 +1,10 @@
 package com.uca.pokedexcapas012026.dto.request;
 
-public record PokemonDTO(
-        String name,
+import lombok.Builder;
+
+@Builder
+public record PokemonDTORequest(
+        String full_name,
         String type,
         int level,
         String weakness
