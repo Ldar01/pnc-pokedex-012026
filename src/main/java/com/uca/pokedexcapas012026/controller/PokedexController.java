@@ -1,14 +1,12 @@
 package com.uca.pokedexcapas012026.controller;
 import com.uca.pokedexcapas012026.dto.GeneralResponse;
 import com.uca.pokedexcapas012026.dto.request.PokemonDTORequest;
-import com.uca.pokedexcapas012026.dto.response.PokemonDTOResponse;
-import com.uca.pokedexcapas012026.entities.Pokemon;
 import com.uca.pokedexcapas012026.service.PokedexService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/pokedex/pokemon")
@@ -40,7 +38,7 @@ public class PokedexController {
     }
 
     @PostMapping
-    public ResponseEntity<GeneralResponse> createPokemon(@RequestBody PokemonDTORequest pokemon) {
+    public ResponseEntity<GeneralResponse> createPokemon(@Valid @RequestBody PokemonDTORequest pokemon) {
         pokedexService.createPokemon(pokemon);
         return ResponseEntity.ok(GeneralResponse.builder()
                         .data(pokemon)
@@ -49,8 +47,8 @@ public class PokedexController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<GeneralResponse> updatePokemon(int id,@RequestBody Pokemon pokemon) {
-        pokedexService.updatePokemon(pokemon);
+    public ResponseEntity<GeneralResponse> updatePokemon(@PathVariable int id,@Valid @RequestBody PokemonDTORequest pokemon) {
+        pokedexService.updatePokemon(id,pokemon);
         return ResponseEntity.ok(GeneralResponse.builder()
                         .data(pokemon)
                         .message("Pokemon has been updated")
