@@ -48,8 +48,8 @@ public class PokedexController {
                 .build());
     }
 
-    @PutMapping
-    public ResponseEntity<GeneralResponse> updatePokemon(@RequestBody Pokemon pokemon) {
+    @PutMapping("/{id}")
+    public ResponseEntity<GeneralResponse> updatePokemon(int id,@RequestBody Pokemon pokemon) {
         pokedexService.updatePokemon(pokemon);
         return ResponseEntity.ok(GeneralResponse.builder()
                         .data(pokemon)

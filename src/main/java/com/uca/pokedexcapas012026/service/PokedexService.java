@@ -33,7 +33,11 @@ public class PokedexService {
         return pokedexRepository.findAll();
     }
 
-    public void updatePokemon(Pokemon pokemon){
-        pokedexRepository.save(pokemon);
+    public void updatePokemon(int id, PokemonDTORequest pokemon){
+        Pokemon pokemonToUpdate = PokemonMapper.toEntity(pokemon);
+        if (pokedexRepository.existsById(id)){
+            pokemonToUpdate.setId(id);
+        }
+        pokedexRepository.save(pokemonToUpdate);
     }
 }
