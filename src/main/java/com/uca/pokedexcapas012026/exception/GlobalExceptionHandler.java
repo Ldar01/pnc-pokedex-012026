@@ -26,8 +26,8 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = methodArgumentNotValidException.getBindingResult()
                 .getFieldErrors().stream().collect(
                         java.util.stream.Collectors.toMap(
-                                error -> error.getField(),
-                                error -> error.getDefaultMessage()
+                                org.springframework.validation.FieldError::getField,
+                                fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Invalid value"
                         )
                 );
 
@@ -35,7 +35,8 @@ public class GlobalExceptionHandler {
                 ApiError.builder()
                         .timestamp(LocalDate.now())
                         .code(HttpStatus.BAD_REQUEST.value())
-                        .message(methodArgumentNotValidException.getFieldErrors().get(0).getDefaultMessage())
+                        .message("Validation failed")
+                        .errors(errors)
                         .build(), HttpStatus.BAD_REQUEST
         );
     }
