@@ -3,6 +3,7 @@ package com.uca.pokedexcapas012026.service;
 import com.uca.pokedexcapas012026.dto.request.PokemonDTORequest;
 import com.uca.pokedexcapas012026.dto.response.PokemonDTOResponse;
 import com.uca.pokedexcapas012026.entities.Pokemon;
+import com.uca.pokedexcapas012026.exception.PokemonNotFound;
 import com.uca.pokedexcapas012026.repository.PokedexRepository;
 import com.uca.pokedexcapas012026.utils.PokemonMapper;
 import lombok.AllArgsConstructor;
@@ -22,7 +23,9 @@ public class PokedexService {
     }
 
     public PokemonDTOResponse findPokemonById(int id){
-        return PokemonMapper.toResponse(pokedexRepository.findById(id).get());
+        return PokemonMapper.toResponse(pokedexRepository.findById(id).orElseThrow(
+                () -> new PokemonNotFound("Pokemon not found with id " + id)
+        ));
     }
 
     public void deletePokemonById(int id){
@@ -37,6 +40,8 @@ public class PokedexService {
         Pokemon pokemonToUpdate = PokemonMapper.toEntity(pokemon);
         if (pokedexRepository.existsById(id)){
             pokemonToUpdate.setId(id);
+        }else{
+            throw new PokemonNotFound("Pokemon not found with id " + id);
         }
         pokedexRepository.save(pokemonToUpdate);
     }
