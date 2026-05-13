@@ -1,186 +1,213 @@
 ﻿# 📖 Pokédex API — pokedex-capas-012026
-API REST construida con **Spring Boot** que implementa una arquitectura de **N-Capas**
-(Controller → Service → Repository → BD) para gestionar información de Pokémon,
-usando **Spring Data JPA** como capa de acceso a datos.
+
+API REST construida con **Spring Boot** que implementa arquitectura de **N-Capas**
+(Controller -> Service -> Repository -> BD) para gestionar información de Pokémon.
+
 ---
+
 ## 🏗️ Arquitectura del proyecto
-```
+
+```text
 controller/
-  └── PokedexController.java      → Capa de presentación (HTTP, validaciones)
+  └── PokedexController.java      -> Endpoints HTTP y respuestas
+
 service/
-  └── PokedexService.java         → Capa de lógica de negocio
+  └── PokedexService.java         -> Lógica de negocio
+
 repository/
-  └── PokedexRepository.java      → Capa de acceso a datos (Spring Data JPA)
+  └── PokedexRepository.java      -> Acceso a datos con Spring Data JPA
+
 entities/
-  └── Pokemon.java                → Entidad JPA mapeada a la tabla `pokemon`
+  └── Pokemon.java                -> Entidad JPA mapeada a la tabla pokemon
+
 dto/
-  ├── GeneralResponse.java        → Wrapper uniforme para todas las respuestas HTTP
+  ├── GeneralResponse.java        -> Wrapper de respuestas exitosas
   ├── request/
-  │   └── PokemonDTORequest.java  → DTO de entrada con validaciones (@Valid)
+  │   └── PokemonDTORequest.java  -> DTO de entrada con validaciones
   └── response/
-      └── PokemonDTOResponse.java → DTO de salida (solo name + level)
+      └── PokemonDTOResponse.java -> DTO de salida (name, level)
+
 utils/
-  └── PokemonMapper.java          → Conversión Entity ↔ DTO
+  └── PokemonMapper.java          -> Conversión DTO <-> Entity
+
+exception/
+  ├── PokemonNotFound.java        -> Excepción de negocio (404)
+  ├── ApiError.java               -> Estructura de errores
+  └── GlobalExceptionHandler.java -> Manejo global de excepciones (@RestControllerAdvice)
 ```
+
 ---
+
 ## 🛠️ Stack tecnológico
-| Tecnología        | Versión            |
-|-------------------|--------------------|
-| Java              | 21                 |
-| Spring Boot       | 4.0.5              |
-| Spring Data JPA   | (incluido en Boot) |
-| Bean Validation   | (incluido en Boot) |
-| Lombok            | última estable     |
-| PostgreSQL        | Driver `42.x`      |
-| Gradle            | Wrapper incluido   |
+
+| Tecnología | Versión |
+|---|---|
+| Java | 21 |
+| Spring Boot | 4.0.5 |
+| Spring Data JPA | Incluido en Spring Boot |
+| Bean Validation | Incluido en Spring Boot |
+| Lombok | Última estable |
+| PostgreSQL | Driver `42.x` |
+| Gradle | Wrapper incluido |
+
 ---
+
 ## 🗃️ Entidad `Pokemon`
-Mapeada a la tabla **`pokemon`** en PostgreSQL.
-Usa los patrones de Lombok: `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`.
 
-| Campo      | Tipo Java | Columna BD | Descripción                    |
-|------------|-----------|------------|--------------------------------|
-| `id`       | `int`     | `id`       | Clave primaria (auto-generada) |
-| `name`     | `String`  | `name`     | Nombre del Pokémon             |
-| `type`     | `String`  | `type`     | Tipo (fuego, agua, etc.)       |
-| `level`    | `int`     | `level`    | Nivel del Pokémon              |
-| `weakness` | `String`  | `weakness` | Debilidad del Pokémon          |
+Mapeada a la tabla `pokemon` en PostgreSQL.
+Anotaciones Lombok: `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`.
+
+| Campo | Tipo Java | Columna BD | Descripción |
+|---|---|---|---|
+| `id` | `int` | `id` | Clave primaria autogenerada |
+| `name` | `String` | `name` | Nombre del Pokémon |
+| `type` | `String` | `type` | Tipo del Pokémon |
+| `level` | `int` | `level` | Nivel del Pokémon |
+| `weakness` | `String` | `weakness` | Debilidad del Pokémon |
 
 ---
+
 ## 📦 DTOs
-### `PokemonDTORequest` — entrada (con validaciones)
-| Campo       | Tipo     | Validación                     |
-|-------------|----------|--------------------------------|
-| `full_name` | `String` | `@NotNull` — no puede ser nulo |
-| `type`      | `String` | `@NotNull` — no puede ser nulo |
-| `level`     | `int`    | `@Min(1)` — mínimo nivel 1     |
-| `weakness`  | `String` | sin restricción                |
-### `PokemonDTOResponse` — salida
-| Campo   | Tipo     | Descripción        |
-|---------|----------|--------------------|
-| `name`  | `String` | Nombre del Pokémon |
-| `level` | `int`    | Nivel del Pokémon  |
-### `GeneralResponse` — wrapper uniforme
-Todas las respuestas HTTP siguen este formato:
+
+### `PokemonDTORequest` (entrada)
+
+| Campo | Tipo | Restricción |
+|---|---|---|
+| `full_name` | `String` | `@NotNull` — "El nombre no debe de ser nulo" |
+| `type` | `String` | `@NotNull` — "El tipo no debe de ser nulo" |
+| `level` | `int` | `@Min(1)` — "El nivel no puede ser menor que 1" |
+| `weakness` | `String` | Sin restricción |
+
+### `PokemonDTOResponse` (salida)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `name` | `String` | Nombre del Pokémon |
+| `level` | `int` | Nivel del Pokémon |
+
+### `GeneralResponse` — respuesta exitosa
+
 ```json
 {
-  "data": { ... },
+  "data": { },
   "message": "Texto descriptivo"
 }
 ```
----
-## 📂 Repositorio — `PokedexRepository`
-Extiende `JpaRepository<Pokemon, Integer>`, lo que provee automáticamente:
-`findAll()`, `findById()`, `save()`, `existsById()`, `deleteById()`, etc.
-**Query derivada personalizada:**
 
-| Método                    | Descripción                      |
-|---------------------------|----------------------------------|
+### `ApiError` — respuesta de error
+
+```json
+{
+  "message": "Pokemon not found with id 5",
+  "code": 404,
+  "timestamp": "2026-05-12"
+}
+```
+
+---
+
+## 🛡️ Manejo de excepciones (`GlobalExceptionHandler`)
+
+| Excepción | HTTP Status | Descripción |
+|---|---|---|
+| `PokemonNotFound` | `404 Not Found` | Pokémon no encontrado por ID |
+| `MethodArgumentNotValidException` | `400 Bad Request` | Validación de `@Valid` fallida |
+
+---
+
+## 📂 Repositorio `PokedexRepository`
+
+Extiende `JpaRepository<Pokemon, Integer>` y además incluye:
+
+| Método | Descripción |
+|---|---|
 | `findByType(String type)` | Busca todos los Pokémon por tipo |
----
-## 🌐 Endpoints disponibles
-Base URL: `http://localhost:8080/pokedex/pokemon`
-Todas las respuestas usan el wrapper `GeneralResponse { data, message }`.
-El Controller usa `@AllArgsConstructor` (Lombok) y `@Valid` para validar el body.
 
-| Método   | Ruta    | Descripción                 | HTTP Status |
-|----------|---------|-----------------------------|-------------|
-| `GET`    | `/`     | Lista todos los Pokémon     | `200 OK`    |
-| `GET`    | `/{id}` | Obtiene un Pokémon por ID   | `200 OK`    |
-| `POST`   | `/`     | Crea un nuevo Pokémon       | `200 OK`    |
-| `PUT`    | `/{id}` | Actualiza un Pokémon por ID | `200 OK`    |
-| `DELETE` | `/{id}` | Elimina un Pokémon por ID   | `200 OK`    |
 ---
-### 📥 Ejemplos de uso
-#### `GET /pokedex/pokemon` — Listar todos
-```bash
-curl http://localhost:8080/pokedex/pokemon
-```
-**Response:**
-```json
-{
-  "data": [
-    { "id": 1, "name": "Charmander", "type": "Fuego", "level": 5, "weakness": "Agua" }
-  ],
-  "message": "All pokemons found"
-}
-```
+
+## 🌐 Endpoints disponibles
+
+Base URL: `http://localhost:8080/pokedex/pokemon`
+
+| Método | Ruta | Descripción | OK | Error |
+|---|---|---|---|---|
+| `GET` | `/` | Lista todos los Pokémon | `200` | - |
+| `GET` | `/{id}` | Busca Pokémon por ID | `200` | `404` |
+| `POST` | `/` | Crea un Pokémon | `200` | `400` |
+| `PUT` | `/{id}` | Actualiza por ID | `200` | `400`, `404` |
+| `DELETE` | `/{id}` | Elimina por ID | `200` | - |
+
 ---
-#### `GET /pokedex/pokemon/1` — Obtener por ID
-```bash
-curl http://localhost:8080/pokedex/pokemon/1
-```
-**Response:**
-```json
-{
-  "data": { "name": "Charmander", "level": 5 },
-  "message": "Pokemon found with id: 1"
-}
-```
-> 📝 Solo devuelve `name` y `level` (usa `PokemonDTOResponse`).
----
-#### `POST /pokedex/pokemon` — Crear Pokémon
+
+## 📥 Ejemplos de uso
+
+### `POST` — Crear Pokémon
+
 ```bash
 curl -X POST http://localhost:8080/pokedex/pokemon \
   -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Charmander",
-    "type": "Fuego",
-    "level": 5,
-    "weakness": "Agua"
-  }'
+  -d '{"full_name": "Charmander", "type": "Fuego", "level": 5, "weakness": "Agua"}'
 ```
-**Response:**
+
+Respuesta:
 ```json
 {
-  "data": { "full_name": "Charmander", "type": "Fuego", "level": 5, "weakness": "Agua" },
+  "data": {"full_name": "Charmander", "type": "Fuego", "level": 5, "weakness": "Agua"},
   "message": "Pokemon has been created"
 }
 ```
-> ⚠️ El campo en el body se llama `full_name` (no `name`).
----
-#### `PUT /pokedex/pokemon/1` — Actualizar Pokémon
+
+### `GET /{id}` — Buscar por ID
+
+```bash
+curl http://localhost:8080/pokedex/pokemon/1
+```
+
+Respuesta (solo `name` y `level` via `PokemonDTOResponse`):
+```json
+{
+  "data": {"name": "Charmander", "level": 5},
+  "message": "Pokemon found with id: 1"
+}
+```
+
+Si el ID no existe → `404`:
+```json
+{"message": "Pokemon not found with id 1", "code": 404, "timestamp": "2026-05-12"}
+```
+
+### `PUT /{id}` — Actualizar
+
 ```bash
 curl -X PUT http://localhost:8080/pokedex/pokemon/1 \
   -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Charmeleon",
-    "type": "Fuego",
-    "level": 16,
-    "weakness": "Agua"
-  }'
+  -d '{"full_name": "Charmeleon", "type": "Fuego", "level": 16, "weakness": "Agua"}'
 ```
-**Response:**
-```json
-{
-  "data": { "full_name": "Charmeleon", "type": "Fuego", "level": 16, "weakness": "Agua" },
-  "message": "Pokemon has been updated"
-}
-```
----
-#### `DELETE /pokedex/pokemon/1` — Eliminar Pokémon
+
+### `DELETE /{id}` — Eliminar
+
 ```bash
 curl -X DELETE http://localhost:8080/pokedex/pokemon/1
 ```
-**Response** *(actualmente bugueado — ver sección de bugs)*:
-```json
-{
-  "data": null,
-  "message": "Pokemon has been deleted"
-}
-```
+
 ---
+
 ## 📋 Métodos del Service
-| Método                                    | Entrada         | Salida               | Endpoint         |
-|-------------------------------------------|-----------------|----------------------|------------------|
-| `createPokemon(PokemonDTORequest)`        | DTO request     | `void`               | ✅ `POST /`       |
-| `findAllPokemon()`                        | —               | `List<Pokemon>`      | ✅ `GET /`        |
-| `findPokemonById(int id)`                 | `int`           | `PokemonDTOResponse` | ✅ `GET /{id}`    |
-| `updatePokemon(int id, PokemonDTORequest)`| `int` + DTO     | `void`               | ✅ `PUT /{id}`    |
-| `deletePokemonById(int id)`               | `int`           | `void`               | ✅ `DELETE /{id}` |
+
+| Método | Entrada | Salida |
+|---|---|---|
+| `createPokemon(PokemonDTORequest)` | DTO | `void` |
+| `findAllPokemon()` | — | `List<Pokemon>` |
+| `findPokemonById(int id)` | `int` | `PokemonDTOResponse` |
+| `updatePokemon(int id, PokemonDTORequest)` | `int` + DTO | `void` |
+| `deletePokemonById(int id)` | `int` | `void` |
+
 ---
-## ⚙️ Configuración de la base de datos
-En `src/main/resources/application.yml`:
+
+## ⚙️ Configuración de base de datos
+
+`src/main/resources/application.yml`:
+
 ```yaml
 spring:
   application:
@@ -192,11 +219,12 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update    # Crea/actualiza tablas automáticamente
-    show-sql: true         # Muestra queries SQL en consola
+      ddl-auto: update
+    show-sql: true
 ```
-> ⚠️ Asegúrate de que PostgreSQL esté corriendo y la base de datos `pokedex` exista antes de iniciar la app.
-### Script SQL (si `ddl-auto: update` no crea la tabla):
+
+Script SQL (si `ddl-auto: update` no crea la tabla):
+
 ```sql
 CREATE TABLE pokemon (
     id       SERIAL PRIMARY KEY,
@@ -206,44 +234,43 @@ CREATE TABLE pokemon (
     weakness VARCHAR(50)
 );
 ```
+
 ---
-## 🚀 Cómo ejecutar el proyecto
-### Prerrequisitos
-- Java 21 instalado
-- PostgreSQL corriendo en `localhost:5432`
-- Base de datos `pokedex` creada
-### Pasos
+
+## 🚀 Ejecución local
+
+**Prerrequisitos:** Java 21, PostgreSQL en `localhost:5432`, base de datos `pokedex` creada.
+
 ```powershell
-# Clonar el repositorio
 git clone <url-del-repositorio>
 cd pokedex-capas-012026
-# Ejecutar (Windows)
 gradlew.bat bootRun
 ```
-```bash
-# Ejecutar (Linux/Mac)
-./gradlew bootRun
-```
-La aplicación estará disponible en: `http://localhost:8080`
+
+Disponible en: `http://localhost:8080`
+
 ---
-## 🐛 Bugs conocidos
-| Severidad | Ubicación                            | Descripción                                                                                   |
-|-----------|--------------------------------------|-----------------------------------------------------------------------------------------------|
-| 🔴 Alta   | `PokedexController.deletePokemon()`  | Después de eliminar llama `findPokemonById(id)` — lanza excepción porque el registro ya no existe |
-| 🔴 Alta   | `PokedexService.findPokemonById()`   | Usa `.get()` sobre el `Optional` sin verificar — lanza `NoSuchElementException` si el ID no existe |
-| 🟡 Media  | `PokedexService.updatePokemon()`     | Si el ID no existe, crea un Pokémon nuevo en lugar de retornar error 404                      |
-| 🟡 Media  | `PokedexService.findAllPokemon()`    | Retorna `List<Pokemon>` (entidad) en vez de `List<PokemonDTOResponse>` — inconsistente con los demás métodos |
+
+## ✅ Mejoras ya implementadas
+
+- `findPokemonById` usa `orElseThrow(() -> new PokemonNotFound(...))` — devuelve `404` controlado
+- `updatePokemon` verifica existencia antes de guardar — lanza `PokemonNotFound` si no existe
+- `GlobalExceptionHandler` maneja `PokemonNotFound` (404) y `MethodArgumentNotValidException` (400)
+- Validaciones en `PokemonDTORequest` con `@NotNull` y `@Min`
+- Controller usa `@AllArgsConstructor` — inyección por constructor sin `@Autowired`
+
 ---
-## ⚠️ Mejoras pendientes
-- [ ] Corregir `deletePokemon()` en Controller — quitar `findPokemonById()` después del delete
-- [ ] Reemplazar `.get()` por `.orElseThrow()` en `findPokemonById()`
-- [ ] Corregir `updatePokemon()` para retornar 404 si el ID no existe
-- [ ] Hacer `findAllPokemon()` retornar `List<PokemonDTOResponse>` para ser consistente
-- [ ] Crear `@RestControllerAdvice` para manejo global de excepciones (404, 400)
-- [ ] Añadir endpoint `GET /type/{type}` usando `findByType()` del repositorio
-- [ ] Cambiar `int` → `Integer` en la entidad `Pokemon` para mejor manejo de nulos con JPA
-- [ ] Agregar pruebas unitarias e integración
+
+## 🐛 Pendientes / bugs conocidos
+
+| Severidad | Ubicación | Descripción |
+|---|---|---|
+| 🔴 Alta | `PokedexController.deletePokemon()` | Tras el `delete`, llama `findPokemonById(id)` que ya no existe — lanza `PokemonNotFound` |
+| 🟡 Media | `PokedexService.findAllPokemon()` | Devuelve `List<Pokemon>` (entidad) en lugar de `List<PokemonDTOResponse>` — inconsistente con `GET /{id}` |
+| 🟡 Baja | `PokedexService.java` | `import org.springframework.beans.factory.annotation.Autowired` no se usa — limpiar import |
+
 ---
+
 ## 👩‍💻 Autor
 Proyecto educativo de arquitectura N-Capas con Spring Boot — 2026.
 por Ing. Luisa Arévalo (ldarevalo@uca.edu.sv)
