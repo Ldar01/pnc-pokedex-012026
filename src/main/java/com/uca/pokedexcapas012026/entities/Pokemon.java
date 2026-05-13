@@ -29,4 +29,8 @@ public class Pokemon {
     @Column(name = "weakness")
     private String weakness;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "trainer_id", nullable = true)
+    private Trainer trainer;
+
 }
