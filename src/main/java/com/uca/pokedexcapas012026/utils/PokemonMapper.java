@@ -8,7 +8,7 @@ public class PokemonMapper {
 
     public static Pokemon toEntity(PokemonDTORequest pokemonDTORequest){
         return Pokemon.builder()
-                .name(pokemonDTORequest.full_name())
+                .name(pokemonDTORequest.full_name().toLowerCase())
                 .level(pokemonDTORequest.level())
                 .type(pokemonDTORequest.type())
                 .weakness(pokemonDTORequest.weakness())

@@ -10,4 +10,8 @@ import java.util.List;
 public interface PokedexRepository extends JpaRepository<Pokemon, Integer> {
 
     List<Pokemon> findByType(String type);
+
+    boolean existsByName(String name);
+
+    Pokemon findByName(String name);
 }

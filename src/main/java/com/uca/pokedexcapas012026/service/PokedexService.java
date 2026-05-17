@@ -19,6 +19,10 @@ public class PokedexService {
     private PokedexRepository pokedexRepository;
 
     public void createPokemon(PokemonDTORequest pokemon){
+        if (pokedexRepository.existsByName(pokemon.full_name().toLowerCase())){
+            throw new IllegalArgumentException("Pokemon with name " + pokemon.full_name() + " already exists");
+        }
+
         pokedexRepository.save(PokemonMapper.toEntity(pokemon));
     }
 
