@@ -1,7 +1,7 @@
 ﻿# 📖 Pokédex API — pokedex-capas-012026
 
 API REST construida con **Spring Boot** que implementa arquitectura de **N-Capas**
-(Controller -> Service -> Repository -> BD) para gestionar información de Pokémon.
+(Controller -> Service -> Repository -> BD) para gestionar Pokémon y Entrenadores.
 
 ---
 
@@ -9,31 +9,38 @@ API REST construida con **Spring Boot** que implementa arquitectura de **N-Capas
 
 ```text
 controller/
-  └── PokedexController.java      -> Endpoints HTTP y respuestas
+  ├── PokedexController.java      -> Endpoints HTTP de Pokémon
+  └── TrainerController.java      -> Endpoints HTTP de Entrenador
 
 service/
-  └── PokedexService.java         -> Lógica de negocio
+  ├── PokedexService.java         -> Lógica de negocio de Pokémon
+  └── TrainerService.java         -> Lógica de negocio de Entrenador
 
 repository/
-  └── PokedexRepository.java      -> Acceso a datos con Spring Data JPA
+  ├── PokedexRepository.java      -> Acceso a datos de Pokémon
+  └── TrainerRepository.java      -> Acceso a datos de Entrenador
 
 entities/
-  └── Pokemon.java                -> Entidad JPA mapeada a la tabla pokemon
+  ├── Pokemon.java                -> Entidad JPA (tabla pokemon)
+  └── Trainer.java                -> Entidad JPA (tabla trainer + trainer_pokemon)
 
 dto/
   ├── GeneralResponse.java        -> Wrapper de respuestas exitosas
   ├── request/
-  │   └── PokemonDTORequest.java  -> DTO de entrada con validaciones
+  │   ├── PokemonDTORequest.java  -> DTO entrada Pokémon (con validaciones)
+  │   └── TrainerDTORequest.java  -> DTO entrada Entrenador
   └── response/
-      └── PokemonDTOResponse.java -> DTO de salida (name, level)
+      ├── PokemonDTOResponse.java -> DTO salida Pokémon (name, level)
+      └── TrainerDTOResponse.java -> DTO salida Entrenador (con lista de Pokémon)
 
 utils/
-  └── PokemonMapper.java          -> Conversión DTO <-> Entity
+  ├── PokemonMapper.java          -> Conversión Pokemon DTO <-> Entity
+  └── TrainerMapper.java          -> Conversión Trainer DTO <-> Entity
 
 exception/
-  ├── PokemonNotFound.java        -> Excepción de negocio (404)
-  ├── ApiError.java               -> Estructura de errores
-  └── GlobalExceptionHandler.java -> Manejo global de excepciones (@RestControllerAdvice)
+  ├── PokemonNotFound.java        -> Excepción 404 de Pokémon
+  ├── ApiError.java               -> Estructura de respuesta de error
+  └── GlobalExceptionHandler.java -> Manejo global (@RestControllerAdvice)
 ```
 
 ---
@@ -52,30 +59,64 @@ exception/
 
 ---
 
-## 🗃️ Entidad `Pokemon`
+## 🗃️ Entidades
 
-Mapeada a la tabla `pokemon` en PostgreSQL.
-Anotaciones Lombok: `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`.
+### `Pokemon`
 
-| Campo | Tipo Java | Columna BD | Descripción |
-|---|---|---|---|
-| `id` | `int` | `id` | Clave primaria autogenerada |
-| `name` | `String` | `name` | Nombre del Pokémon |
-| `type` | `String` | `type` | Tipo del Pokémon |
-| `level` | `int` | `level` | Nivel del Pokémon |
-| `weakness` | `String` | `weakness` | Debilidad del Pokémon |
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | `int` | Clave primaria autogenerada |
+| `name` | `String` | Nombre del Pokémon |
+| `type` | `String` | Tipo del Pokémon |
+| `level` | `int` | Nivel del Pokémon |
+| `weakness` | `String` | Debilidad del Pokémon |
+
+### `Trainer`
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | `int` | Clave primaria autogenerada |
+| `name` | `String` | Nombre del entrenador |
+| `age` | `Integer` | Edad del entrenador |
+| `pokemons` | `List<Pokemon>` | Pokémon del entrenador (`@ManyToMany`) |
+
+### Relación entre entidades
+
+```
+Trainer  *──────────*  Pokemon
+         trainer_pokemon
+         (trainer_id, pokemon_id)
+```
+
+Un `Trainer` puede tener muchos `Pokemon` y un `Pokemon` puede pertenecer a muchos `Trainer` (`@ManyToMany` con tabla intermedia `trainer_pokemon`).
 
 ---
 
 ## 📦 DTOs
 
+### `TrainerDTORequest` (entrada)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `name` | `String` | Nombre del entrenador |
+| `age` | `int` | Edad del entrenador |
+
+### `TrainerDTOResponse` (salida)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | `int` | ID del entrenador |
+| `name` | `String` | Nombre del entrenador |
+| `age` | `int` | Edad del entrenador |
+| `pokemons` | `List<PokemonDTOResponse>` | Pokémon asociados |
+
 ### `PokemonDTORequest` (entrada)
 
 | Campo | Tipo | Restricción |
 |---|---|---|
-| `full_name` | `String` | `@NotNull` — "El nombre no debe de ser nulo" |
-| `type` | `String` | `@NotNull` — "El tipo no debe de ser nulo" |
-| `level` | `int` | `@Min(1)` — "El nivel no puede ser menor que 1" |
+| `full_name` | `String` | `@NotNull` |
+| `type` | `String` | `@NotNull` |
+| `level` | `int` | `@Min(1)` |
 | `weakness` | `String` | Sin restricción |
 
 ### `PokemonDTOResponse` (salida)
@@ -85,47 +126,35 @@ Anotaciones Lombok: `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstruc
 | `name` | `String` | Nombre del Pokémon |
 | `level` | `int` | Nivel del Pokémon |
 
-### `GeneralResponse` — respuesta exitosa
+### `GeneralResponse` / `ApiError`
 
 ```json
-{
-  "data": { },
-  "message": "Texto descriptivo"
-}
-```
+// Respuesta exitosa
+{ "data": { }, "message": "Texto descriptivo" }
 
-### `ApiError` — respuesta de error
-
-```json
-{
-  "message": "Pokemon not found with id 5",
-  "code": 404,
-  "timestamp": "2026-05-12"
-}
+// Respuesta de error
+{ "message": "Detalle", "code": 404, "timestamp": "2026-05-17", "errors": { } }
 ```
 
 ---
 
-## 🛡️ Manejo de excepciones (`GlobalExceptionHandler`)
+## 📂 Repositorios
 
-| Excepción | HTTP Status | Descripción |
-|---|---|---|
-| `PokemonNotFound` | `404 Not Found` | Pokémon no encontrado por ID |
-| `MethodArgumentNotValidException` | `400 Bad Request` | Validación de `@Valid` fallida |
-
----
-
-## 📂 Repositorio `PokedexRepository`
-
-Extiende `JpaRepository<Pokemon, Integer>` y además incluye:
+### `PokedexRepository`
 
 | Método | Descripción |
 |---|---|
-| `findByType(String type)` | Busca todos los Pokémon por tipo |
+| `findByType(String type)` | Busca Pokémon por tipo |
+| `existsByName(String name)` | Verifica si existe un Pokémon por nombre |
+| `findByName(String name)` | Busca un Pokémon por nombre |
+
+### `TrainerRepository`
+
+Extiende `JpaRepository<Trainer, Integer>` — CRUD básico por defecto.
 
 ---
 
-## 🌐 Endpoints disponibles
+## 🌐 Endpoints — Pokémon
 
 Base URL: `http://localhost:8080/pokedex/pokemon`
 
@@ -137,62 +166,42 @@ Base URL: `http://localhost:8080/pokedex/pokemon`
 | `PUT` | `/{id}` | Actualiza por ID | `200` | `400`, `404` |
 | `DELETE` | `/{id}` | Elimina por ID | `200` | - |
 
+## 🌐 Endpoints — Entrenador
+
+Base URL: `http://localhost:8080/pokedex/trainer`
+
+| Método | Ruta | Descripción | OK | Error |
+|---|---|---|---|---|
+| `POST` | `/` | Crea un entrenador | `200` | - |
+| `POST` | `/{idTrainer}/pokemon` | Agrega un Pokémon existente a un entrenador | `200` | `400` |
+
 ---
 
-## 📥 Ejemplos de uso
+## 📥 Ejemplos de uso — Trainer
 
-### `POST` — Crear Pokémon
+### Crear entrenador
 
 ```bash
-curl -X POST http://localhost:8080/pokedex/pokemon \
+curl -X POST http://localhost:8080/pokedex/trainer \
   -H "Content-Type: application/json" \
-  -d '{"full_name": "Charmander", "type": "Fuego", "level": 5, "weakness": "Agua"}'
+  -d '{"name": "Ash", "age": 10}'
 ```
 
-Respuesta:
-```json
-{
-  "data": {"full_name": "Charmander", "type": "Fuego", "level": 5, "weakness": "Agua"},
-  "message": "Pokemon has been created"
-}
-```
-
-### `GET /{id}` — Buscar por ID
+### Agregar Pokémon a un entrenador
 
 ```bash
-curl http://localhost:8080/pokedex/pokemon/1
-```
-
-Respuesta (solo `name` y `level` via `PokemonDTOResponse`):
-```json
-{
-  "data": {"name": "Charmander", "level": 5},
-  "message": "Pokemon found with id: 1"
-}
-```
-
-Si el ID no existe → `404`:
-```json
-{"message": "Pokemon not found with id 1", "code": 404, "timestamp": "2026-05-12"}
-```
-
-### `PUT /{id}` — Actualizar
-
-```bash
-curl -X PUT http://localhost:8080/pokedex/pokemon/1 \
+curl -X POST http://localhost:8080/pokedex/trainer/1/pokemon \
   -H "Content-Type: application/json" \
-  -d '{"full_name": "Charmeleon", "type": "Fuego", "level": 16, "weakness": "Agua"}'
+  -d '{"full_name": "pikachu", "type": "Electrico", "level": 5, "weakness": "Tierra"}'
 ```
 
-### `DELETE /{id}` — Eliminar
-
-```bash
-curl -X DELETE http://localhost:8080/pokedex/pokemon/1
-```
+> ⚠️ El Pokémon debe **existir previamente** en la BD. El servicio busca por `full_name` (en minúsculas).
 
 ---
 
 ## 📋 Métodos del Service
+
+### `PokedexService`
 
 | Método | Entrada | Salida |
 |---|---|---|
@@ -201,6 +210,13 @@ curl -X DELETE http://localhost:8080/pokedex/pokemon/1
 | `findPokemonById(int id)` | `int` | `PokemonDTOResponse` |
 | `updatePokemon(int id, PokemonDTORequest)` | `int` + DTO | `void` |
 | `deletePokemonById(int id)` | `int` | `void` |
+
+### `TrainerService`
+
+| Método | Entrada | Salida |
+|---|---|---|
+| `createTrainer(TrainerDTORequest)` | DTO | `void` |
+| `savePokemonToTrainer(PokemonDTORequest, int)` | DTO + `idTrainer` | `void` |
 
 ---
 
@@ -223,7 +239,7 @@ spring:
     show-sql: true
 ```
 
-Script SQL (si `ddl-auto: update` no crea la tabla):
+Script SQL para crear las tablas manualmente (si `ddl-auto: update` no las crea):
 
 ```sql
 CREATE TABLE pokemon (
@@ -232,6 +248,18 @@ CREATE TABLE pokemon (
     type     VARCHAR(50),
     level    INTEGER,
     weakness VARCHAR(50)
+);
+
+CREATE TABLE trainer (
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    age  INTEGER
+);
+
+CREATE TABLE trainer_pokemon (
+    trainer_id INTEGER REFERENCES trainer(id),
+    pokemon_id INTEGER REFERENCES pokemon(id),
+    PRIMARY KEY (trainer_id, pokemon_id)
 );
 ```
 
@@ -253,11 +281,13 @@ Disponible en: `http://localhost:8080`
 
 ## ✅ Mejoras ya implementadas
 
-- `findPokemonById` usa `orElseThrow(() -> new PokemonNotFound(...))` — devuelve `404` controlado
-- `updatePokemon` verifica existencia antes de guardar — lanza `PokemonNotFound` si no existe
-- `GlobalExceptionHandler` maneja `PokemonNotFound` (404) y `MethodArgumentNotValidException` (400)
-- Validaciones en `PokemonDTORequest` con `@NotNull` y `@Min`
-- Controller usa `@AllArgsConstructor` — inyección por constructor sin `@Autowired`
+- Manejo de errores con `orElseThrow(() -> new PokemonNotFound(...))`
+- `updatePokemon` valida existencia antes de guardar
+- `GlobalExceptionHandler` con `@RestControllerAdvice` para `404` y `400`
+- Validaciones en request con `@Valid`, `@NotNull`, `@Min`
+- `ApiError` incluye campo `errors` con todos los campos inválidos
+- Relación `@ManyToMany` entre `Trainer` y `Pokemon` con tabla intermedia `trainer_pokemon`
+- `PokedexRepository` con `existsByName` y `findByName` para buscar Pokémon por nombre
 
 ---
 
@@ -265,9 +295,11 @@ Disponible en: `http://localhost:8080`
 
 | Severidad | Ubicación | Descripción |
 |---|---|---|
-| 🔴 Alta | `PokedexController.deletePokemon()` | Tras el `delete`, llama `findPokemonById(id)` que ya no existe — lanza `PokemonNotFound` |
-| 🟡 Media | `PokedexService.findAllPokemon()` | Devuelve `List<Pokemon>` (entidad) en lugar de `List<PokemonDTOResponse>` — inconsistente con `GET /{id}` |
-| 🟡 Baja | `PokedexService.java` | `import org.springframework.beans.factory.annotation.Autowired` no se usa — limpiar import |
+| 🔴 Alta | `PokedexController.deletePokemon()` | Tras el `delete`, llama `findPokemonById(id)` — lanza `PokemonNotFound` porque ya no existe |
+| 🟡 Media | `TrainerService.savePokemonToTrainer()` | La lógica de `existsByName` está invertida — lanza error si el Pokémon **existe** en vez de si **no existe** |
+| 🟡 Media | `TrainerController` | No usa `ResponseEntity<GeneralResponse>` — respuestas inconsistentes con el resto de la API |
+| 🟡 Media | `PokedexService.findAllPokemon()` | Devuelve `List<Pokemon>` (entidad) en lugar de `List<PokemonDTOResponse>` |
+| 🟢 Baja | `PokedexService.java` | Import `@Autowired` sin usar |
 
 ---
 
