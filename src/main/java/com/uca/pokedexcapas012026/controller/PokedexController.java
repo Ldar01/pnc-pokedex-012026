@@ -5,6 +5,7 @@ import com.uca.pokedexcapas012026.service.PokedexService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -22,6 +23,7 @@ public class PokedexController {
     }*/
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<GeneralResponse> findAll(){
         return ResponseEntity.ok(GeneralResponse.builder()
                         .data(pokedexService.findAllPokemon())
