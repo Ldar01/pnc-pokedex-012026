@@ -12,8 +12,3 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-
-  security:
-    user:
-      name: luisa
-      password: root
