@@ -1,5 +1,6 @@
 package com.uca.pokedexcapas012026.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -8,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
 
 @Component
@@ -20,7 +21,7 @@ public class JwtUtil {
     private String expirationTime;
 
 
-    public Key getKey() {
+    public SecretKey getKey() {
        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
     }
 
@@ -29,29 +30,33 @@ public class JwtUtil {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + Long.parseLong(expirationTime));
 
-        String token = Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(now)
+                .expiration(expiryDate)
                 .signWith(getKey())
                 .compact();
-        return token;
     }
 
     public String getUsernameFromToken(String token) {
-        String username = Jwts.parser()
-                .setSigningKey(getKey())
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        Claims claims = Jwts.parser()
+                .verifyWith(getKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
 
-        return username;
+        return claims.getSubject();
     }
 
     public boolean validateToken(String token) {
-        Jwts.parser()
-                .setSigningKey(getKey())
-                .parse(token);
-        return true;
+        try {
+            Jwts.parser()
+                    .verifyWith(getKey())
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
