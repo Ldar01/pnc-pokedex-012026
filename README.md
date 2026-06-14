@@ -10,11 +10,13 @@ API REST construida con **Spring Boot** que implementa arquitectura de **N-Capas
 ```text
 controller/
   ├── PokedexController.java      -> Endpoints HTTP de Pokémon
-  └── TrainerController.java      -> Endpoints HTTP de Entrenador
+  ├── TrainerController.java      -> Endpoints HTTP de Entrenador
+  └── AuthController.java         -> Endpoints de autenticación (login)
 
 service/
   ├── PokedexService.java         -> Lógica de negocio de Pokémon
-  └── TrainerService.java         -> Lógica de negocio de Entrenador
+  ├── TrainerService.java         -> Lógica de negocio de Entrenador
+  └── AuthService.java            -> Lógica de autenticación
 
 repository/
   ├── PokedexRepository.java      -> Acceso a datos de Pokémon
@@ -28,10 +30,16 @@ dto/
   ├── GeneralResponse.java        -> Wrapper de respuestas exitosas
   ├── request/
   │   ├── PokemonDTORequest.java  -> DTO entrada Pokémon (con validaciones)
-  │   └── TrainerDTORequest.java  -> DTO entrada Entrenador
+  │   ├── TrainerDTORequest.java  -> DTO entrada Entrenador
+  │   └── LoginRequest.java       -> DTO entrada login
   └── response/
       ├── PokemonDTOResponse.java -> DTO salida Pokémon (name, level)
       └── TrainerDTOResponse.java -> DTO salida Entrenador (con lista de Pokémon)
+
+security/
+  ├── JwtUtil.java                -> Generación y validación de JWT
+  ├── JwtAuthFilter.java          -> Filtro de autenticación JWT
+  └── JwtAuth.java                -> Configuración de seguridad
 
 utils/
   ├── PokemonMapper.java          -> Conversión Pokemon DTO <-> Entity
@@ -52,9 +60,11 @@ exception/
 | Java | 21 |
 | Spring Boot | 4.0.5 |
 | Spring Data JPA | Incluido en Spring Boot |
+| Spring Security | Incluido en Spring Boot |
 | Bean Validation | Incluido en Spring Boot |
 | Lombok | Última estable |
 | PostgreSQL | Driver `42.x` |
+| JWT (jjwt) | 0.12.6 |
 | Gradle | Wrapper incluido |
 
 ---
@@ -129,11 +139,11 @@ Un `Trainer` puede tener muchos `Pokemon` y un `Pokemon` puede pertenecer a much
 ### `GeneralResponse` / `ApiError`
 
 ```json
-// Respuesta exitosa
-{ "data": { }, "message": "Texto descriptivo" }
+{ "data": {}, "message": "Texto descriptivo" }
+```
 
-// Respuesta de error
-{ "message": "Detalle", "code": 404, "timestamp": "2026-05-17", "errors": { } }
+```json
+{ "message": "Detalle", "code": 404, "timestamp": "2026-05-17", "errors": {} }
 ```
 
 ---
@@ -151,6 +161,65 @@ Un `Trainer` puede tener muchos `Pokemon` y un `Pokemon` puede pertenecer a much
 ### `TrainerRepository`
 
 Extiende `JpaRepository<Trainer, Integer>` — CRUD básico por defecto.
+
+---
+
+## 🔐 Seguridad y JWT
+
+### Configuración JWT
+
+El proyecto usa **JSON Web Tokens (JWT)** para autenticación stateless.
+
+**Variables de entorno requeridas** (`application.yml`):
+
+```yaml
+jwt:
+  secret: ${JWT_SECRET}      # Clave secreta en Base64 (mínimo 256 bits)
+  expiration: 60000          # Tiempo de expiración en ms (1 minuto)
+```
+
+### Componente `JwtUtil`
+
+| Método | Descripción |
+|---|---|
+| `generateToken(Authentication)` | Genera un JWT firmado con la información del usuario |
+| `validateToken(String token)` | Valida firma y expiración del token |
+| `getUsernameFromToken(String token)` | Extrae el username del token |
+| `getKey()` | Genera la clave secreta HMAC desde Base64 |
+
+### Uso de JWT
+
+**1. Generar clave secreta Base64:**
+
+```powershell
+# Genera una clave aleatoria de 256 bits en Base64
+[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("tu_secreto_muy_largo_de_al_menos_32_caracteres"))
+```
+
+**2. Configurar variable de entorno:**
+
+```powershell
+# Windows PowerShell
+$env:JWT_SECRET="dHVfc2VjcmV0b192ZXJ5X2xhcmdvX2RlX2FsX21lbm9zXzMyX2NhcmFjdGVyZXM="
+
+# Linux/Mac
+export JWT_SECRET="dHVfc2VjcmV0b192ZXJ5X2xhcmdvX2RlX2FsX21lbm9zXzMyX2NhcmFjdGVyZXM="
+```
+
+**3. Usar el token en peticiones:**
+
+```bash
+curl -H "Authorization: Bearer <tu-token-jwt>" \
+     http://localhost:8080/api/protected-endpoint
+```
+
+### Mejoras en JWT (0.12.6)
+
+- ✅ API moderna sin métodos deprecated
+- ✅ Uso de `SecretKey` en lugar de `Key` genérico
+- ✅ Parser con `.verifyWith()` y `.build()`
+- ✅ Builder con métodos sin `set` (`.subject()`, `.issuedAt()`, `.expiration()`)
+- ✅ Manejo robusto de excepciones en validación
 
 ---
 
@@ -237,6 +306,10 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+jwt:
+  secret: ${JWT_SECRET}      # Variable de entorno con clave Base64
+  expiration: 60000          # 1 minuto (en milisegundos)
 ```
 
 Script SQL para crear las tablas manualmente (si `ddl-auto: update` no las crea):
@@ -267,7 +340,21 @@ CREATE TABLE trainer_pokemon (
 
 ## 🚀 Ejecución local
 
-**Prerrequisitos:** Java 21, PostgreSQL en `localhost:5432`, base de datos `pokedex` creada.
+**Prerrequisitos:** 
+- Java 21
+- PostgreSQL en `localhost:5432`
+- Base de datos `pokedex` creada
+
+**Pasos:**
+
+1. **Configurar variable de entorno JWT:**
+
+```powershell
+# Windows PowerShell
+$env:JWT_SECRET="dHVfc2VjcmV0b192ZXJ5X2xhcmdvX2RlX2FsX21lbm9zXzMyX2NhcmFjdGVyZXM="
+```
+
+2. **Clonar y ejecutar:**
 
 ```powershell
 git clone <url-del-repositorio>
@@ -279,15 +366,32 @@ Disponible en: `http://localhost:8080`
 
 ---
 
+
 ## ✅ Mejoras ya implementadas
 
+### Arquitectura y Patrones
+- Arquitectura N-Capas (Controller → Service → Repository → Entity)
+- Separación de DTOs (Request/Response) y Entities
+- Mappers dedicados para conversión DTO ↔ Entity
+- Relación `@ManyToMany` entre `Trainer` y `Pokemon` con tabla intermedia `trainer_pokemon`
+
+### Validación y Manejo de Errores
 - Manejo de errores con `orElseThrow(() -> new PokemonNotFound(...))`
 - `updatePokemon` valida existencia antes de guardar
 - `GlobalExceptionHandler` con `@RestControllerAdvice` para `404` y `400`
 - Validaciones en request con `@Valid`, `@NotNull`, `@Min`
 - `ApiError` incluye campo `errors` con todos los campos inválidos
-- Relación `@ManyToMany` entre `Trainer` y `Pokemon` con tabla intermedia `trainer_pokemon`
+
+### Seguridad (JWT)
+- JWT 0.12.6 (API moderna sin deprecated)
+- Autenticación stateless con Spring Security
+- Generación y validación de tokens JWT
+- Uso de `SecretKey` con HMAC-SHA256
+- Configuración por variables de entorno
+
+### Repositorios
 - `PokedexRepository` con `existsByName` y `findByName` para buscar Pokémon por nombre
+- `TrainerRepository` con CRUD básico mediante `JpaRepository`
 
 ---
 
@@ -300,6 +404,12 @@ Disponible en: `http://localhost:8080`
 | 🟡 Media | `TrainerController` | No usa `ResponseEntity<GeneralResponse>` — respuestas inconsistentes con el resto de la API |
 | 🟡 Media | `PokedexService.findAllPokemon()` | Devuelve `List<Pokemon>` (entidad) en lugar de `List<PokemonDTOResponse>` |
 | 🟢 Baja | `PokedexService.java` | Import `@Autowired` sin usar |
+
+---
+
+## 📚 Documentación adicional
+
+- **[JWT-MODERNIZATION.md](JWT-MODERNIZATION.md)** — Guía completa sobre la actualización de JWT de 0.11.x a 0.12.x, diferencias de API, ejemplos de uso y mejores prácticas
 
 ---
 
