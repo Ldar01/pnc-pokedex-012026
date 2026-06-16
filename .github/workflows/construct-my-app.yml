@@ -1,4 +1,4 @@
-name: Java CI with Maven
+name: Java CI with Gradle
 on:
   push:                    # Cuando alguien hace push...
     branches:
@@ -23,6 +23,6 @@ jobs:                      # Definición de los trabajos (jobs) a realizar
           distribution: 'temurin'
         # Configura Java 21 para compilar y ejecutar el proyecto
 
-      - name: Build with Maven
-        run: gradlew clean build
+      - name: Build with Gradle
+        run: ./gradlew clean build
         # Ejecuta el comando para compilar y empaquetar el proyecto
